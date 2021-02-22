@@ -11,4 +11,29 @@ There are a few parts to it they are listed below.
 - beacon_compatibility: This is the beacon internal functions so that you can load BOF files and run them.
 - COFFLoader: This is the actual coff loader, and when built for nix just loads the 64 bit object file and parses it.
 - test: This is the example "COFF" file, will build to the COFF file for you when make is called.
+- beacon_generate: This is a helper script to build strings/arguments compatible with the beacon_compatibility functions.
 
+
+## Beacon Generate
+This is used to generate arguments for the COFFLoader code, if the BOF takes arguments simply add the arguments with the type expected with this and generate the hex string for use.
+
+Example usage here:
+```
+COFFLoader % python3 beacon_generate.py
+Beacon Argument Generator
+Beacon>help
+
+Documented commands (type help <topic>):
+========================================
+addString  addWString  addint  addshort  exit  generate  help  reset
+
+Beacon>addWString test
+Beacon>addint 4
+Beacon>generate
+b'120000000a0000007400650073007400000004000000'
+Beacon>reset
+Beacon>addint 5
+Beacon>generate
+b'0400000005000000'
+Beacon>exit
+```
