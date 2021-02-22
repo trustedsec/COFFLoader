@@ -37,3 +37,11 @@ Beacon>generate
 b'0400000005000000'
 Beacon>exit
 ```
+
+## Running
+An example of how to run a BOF is below.
+
+```
+COFFLoader64.exe go test64.out
+COFFLoader64.exe go ..\CS-Situational-Awareness-BOF\SA\whoami\whoami.x64.o
+```
