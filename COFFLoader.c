@@ -409,9 +409,9 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
 #ifdef _WIN32
             /* So for some reason VS 2017 doesn't like this, but char* casting works, so just going to do that */
 #ifdef _MSC_VER
-            foo = (char*)sectionMapping[coff_sym_ptr[tempcounter].SectionNumber - 1] + coff_sym_ptr[tempcounter].Value;
+            foo = (char*)(sectionMapping[coff_sym_ptr[tempcounter].SectionNumber - 1] + coff_sym_ptr[tempcounter].Value);
 #else
-            foo = (void(*)(char *, unsigned long))sectionMapping[coff_sym_ptr[tempcounter].SectionNumber - 1] + coff_sym_ptr[tempcounter].Value;
+            foo = (void(*)(char *, unsigned long))(sectionMapping[coff_sym_ptr[tempcounter].SectionNumber - 1] + coff_sym_ptr[tempcounter].Value);
 #endif
             //sectionMapping[coff_sym_ptr[tempcounter].SectionNumber-1][coff_sym_ptr[tempcounter].Value+7] = '\xcc';
             DEBUG_PRINT("Trying to run: %p\n", foo);
