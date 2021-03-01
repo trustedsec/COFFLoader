@@ -6,7 +6,7 @@
 /* These seem to be the same sizes across architectures, relocations are different though. Defined both sets of types. */
 
 /* sizeof 20 */
-typedef struct coff_file_header{
+typedef struct coff_file_header {
     uint16_t Machine;
     uint16_t NumberOfSections;
     uint32_t TimeDateStamp;
@@ -19,9 +19,10 @@ typedef struct coff_file_header{
 /* AMD64  should always be here */
 #define MACHINETYPE_AMD64 0x8664
 
+#pragma pack(push,1)
 
 /* Size of 40 */
-typedef struct coff_sect{
+typedef struct coff_sect {
     char Name[8];
     uint32_t VirtualSize;
     uint32_t VirtualAddress;
@@ -32,17 +33,17 @@ typedef struct coff_sect{
     uint16_t NumberOfRelocations;
     uint16_t NumberOfLinenumbers;
     uint32_t Characteristics;
-}__attribute__((packed)) coff_sect_t;
+} coff_sect_t;
 
 
-typedef struct coff_reloc{
+typedef struct coff_reloc {
     uint32_t VirtualAddress;
     uint32_t SymbolTableIndex;
     uint16_t Type;
-} __attribute__((packed)) coff_reloc_t;
+} coff_reloc_t;
 
-typedef struct coff_sym{
-    union{
+typedef struct coff_sym {
+    union {
         char Name[8];
         uint32_t value[2];
     } first;
@@ -52,8 +53,9 @@ typedef struct coff_sym{
     uint8_t StorageClass;
     uint8_t NumberOfAuxSymbols;
 
-} __attribute__((packed)) coff_sym_t;
+} coff_sym_t;
 
+#pragma pack(pop)
 /* AMD64 Specific types */
 #define IMAGE_REL_AMD64_ABSOLUTE    0x0000
 #define IMAGE_REL_AMD64_ADDR64      0x0001

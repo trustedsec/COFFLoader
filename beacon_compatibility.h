@@ -3,11 +3,11 @@
  * -----------------------------------------
  * The whole point of these files are to allow beacon object files built for CS
  * to run fine inside of other tools without recompiling.
- * 
+ *
  * Built off of the beacon.h file provided to build for CS.
  */
 #ifndef BEACON_COMPATIBILITY_H_
-/* Structures as is in beacon.h */
+ /* Structures as is in beacon.h */
 extern unsigned char* InternalFunctions[25][2];
 typedef struct {
     char * original; /* the original buffer [so we can free it] */
