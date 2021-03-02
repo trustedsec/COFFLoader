@@ -145,7 +145,7 @@ void* process_symbol(char* symbolstring) {
         DEBUG_PRINT("\t\tFunction: %s\n", localfunc);
         /* Resolve the symbols here, and set the functionpointervalue */
 #if defined(_WIN32)
-        llHandle = LoadLibrary(locallib);
+        llHandle = LoadLibraryA(locallib);
         DEBUG_PRINT("\t\tHandle: 0x%lx\n", llHandle);
         functionaddress = GetProcAddress(llHandle, localfunc);
         DEBUG_PRINT("\t\tProcAddress: 0x%p\n", functionaddress);
