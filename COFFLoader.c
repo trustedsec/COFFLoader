@@ -118,13 +118,15 @@ void* process_symbol(char* symbolstring) {
 #endif
 
     memcpy(localcopy, symbolstring, strlen(symbolstring));
-    if (strncmp(symbolstring, PREPENDSYMBOLVALUE"Beacon", strlen(PREPENDSYMBOLVALUE"Beacon")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"toWideChar", strlen(PREPENDSYMBOLVALUE"toWideChar")) == 0) {
+    if (strncmp(symbolstring, PREPENDSYMBOLVALUE"Beacon", strlen(PREPENDSYMBOLVALUE"Beacon")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"toWideChar", strlen(PREPENDSYMBOLVALUE"toWideChar")) == 0 ||
+    strncmp(symbolstring, PREPENDSYMBOLVALUE"GetProcAddress", strlen(PREPENDSYMBOLVALUE"GetProcAddress")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"LoadLibraryA", strlen(PREPENDSYMBOLVALUE"LoadLibraryA")) == 0 ||
+    strncmp(symbolstring, PREPENDSYMBOLVALUE"GetModuleHandle", strlen(PREPENDSYMBOLVALUE"GetModuleHandle")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"FreeLibrary", strlen(PREPENDSYMBOLVALUE"FreeLibrary")) == 0) {
         localfunc = symbolstring + strlen(PREPENDSYMBOLVALUE);
         DEBUG_PRINT("\t\tInternalFunction: %s\n", localfunc);
         /* TODO: Get internal symbol here and set to functionaddress, then
          * return the pointer to the internal function*/
 #if defined(_WIN32)
-        for (tempcounter = 0; tempcounter < 25; tempcounter++) {
+        for (tempcounter = 0; tempcounter < 29; tempcounter++) {
             if (InternalFunctions[tempcounter][0] != NULL) {
                 if (strcmp(localfunc, (char*)(InternalFunctions[tempcounter][0])) == 0) {
                     functionaddress = (void*)InternalFunctions[tempcounter][1];
@@ -464,6 +466,7 @@ int main(int argc, char* argv[]) {
         printf("Ran/parsed the coff\n");
         outdata = BeaconGetOutputData(&outdataSize);
         if (outdata != NULL) {
+
             printf("Outdata Below:\n\n%s\n", outdata);
         }
 #endif
