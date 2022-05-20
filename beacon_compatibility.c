@@ -26,7 +26,7 @@
 
 
  /* Data Parsing */
-unsigned char* InternalFunctions[25][2] = {
+unsigned char* InternalFunctions[29][2] = {
     {(unsigned char*)"BeaconDataParse", (unsigned char*)BeaconDataParse},
     {(unsigned char*)"BeaconDataInt", (unsigned char*)BeaconDataInt},
     {(unsigned char*)"BeaconDataShort", (unsigned char*)BeaconDataShort},
@@ -49,7 +49,11 @@ unsigned char* InternalFunctions[25][2] = {
     {(unsigned char*)"BeaconInjectProcess", (unsigned char*)BeaconInjectProcess},
     {(unsigned char*)"BeaconInjectTemporaryProcess", (unsigned char*)BeaconInjectTemporaryProcess},
     {(unsigned char*)"BeaconCleanupProcess", (unsigned char*)BeaconCleanupProcess},
-    {(unsigned char*)"toWideChar", (unsigned char*)toWideChar}
+    {(unsigned char*)"toWideChar", (unsigned char*)toWideChar},
+    {(unsigned char*)"LoadLibraryA", (unsigned char*)LoadLibraryA},
+    {(unsigned char*)"GetProcAddress", (unsigned char*)GetProcAddress},
+    {(unsigned char*)"GetModuleHandle", (unsigned char*)GetModuleHandleA},
+    {(unsigned char*)"FreeLibrary", (unsigned char*)FreeLibrary}
 };
 
 uint32_t swap_endianess(uint32_t indata) {
@@ -230,7 +234,7 @@ void BeaconPrintf(int type, char* fmt, ...) {
     beacon_compatibility_output = tempptr;
     memset(beacon_compatibility_output + beacon_compatibility_offset, 0, length + 1);
     va_start(args, fmt);
-    length = vsnprintf(beacon_compatibility_output + beacon_compatibility_offset, length, fmt, args);
+    length = vsnprintf(beacon_compatibility_output + beacon_compatibility_offset, length +1, fmt, args);
     beacon_compatibility_size += length;
     beacon_compatibility_offset += length;
     va_end(args);
