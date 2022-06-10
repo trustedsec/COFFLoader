@@ -120,7 +120,7 @@ void* process_symbol(char* symbolstring) {
     memcpy(localcopy, symbolstring, strlen(symbolstring));
     if (strncmp(symbolstring, PREPENDSYMBOLVALUE"Beacon", strlen(PREPENDSYMBOLVALUE"Beacon")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"toWideChar", strlen(PREPENDSYMBOLVALUE"toWideChar")) == 0 ||
     strncmp(symbolstring, PREPENDSYMBOLVALUE"GetProcAddress", strlen(PREPENDSYMBOLVALUE"GetProcAddress")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"LoadLibraryA", strlen(PREPENDSYMBOLVALUE"LoadLibraryA")) == 0 ||
-    strncmp(symbolstring, PREPENDSYMBOLVALUE"GetModuleHandle", strlen(PREPENDSYMBOLVALUE"GetModuleHandle")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"FreeLibrary", strlen(PREPENDSYMBOLVALUE"FreeLibrary")) == 0) {
+    strncmp(symbolstring, PREPENDSYMBOLVALUE"GetModuleHandleA", strlen(PREPENDSYMBOLVALUE"GetModuleHandleA")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"FreeLibrary", strlen(PREPENDSYMBOLVALUE"FreeLibrary")) == 0) {
         localfunc = symbolstring + strlen(PREPENDSYMBOLVALUE);
         DEBUG_PRINT("\t\tInternalFunction: %s\n", localfunc);
         /* TODO: Get internal symbol here and set to functionaddress, then

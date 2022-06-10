@@ -52,7 +52,7 @@ unsigned char* InternalFunctions[29][2] = {
     {(unsigned char*)"toWideChar", (unsigned char*)toWideChar},
     {(unsigned char*)"LoadLibraryA", (unsigned char*)LoadLibraryA},
     {(unsigned char*)"GetProcAddress", (unsigned char*)GetProcAddress},
-    {(unsigned char*)"GetModuleHandle", (unsigned char*)GetModuleHandleA},
+    {(unsigned char*)"GetModuleHandleA", (unsigned char*)GetModuleHandleA},
     {(unsigned char*)"FreeLibrary", (unsigned char*)FreeLibrary}
 };
 
