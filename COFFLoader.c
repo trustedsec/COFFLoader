@@ -35,7 +35,7 @@
 unsigned char* unhexlify(unsigned char* value, int *outlen) {
     unsigned char* retval = NULL;
     char byteval[3] = { 0 };
-    int counter = 0;
+    unsigned int counter = 0;
     int counter2 = 0;
     char character = 0;
     if (value == NULL) {
@@ -55,7 +55,7 @@ unsigned char* unhexlify(unsigned char* value, int *outlen) {
     counter2 = 0;
     for (counter = 0; counter < strlen((char*)value); counter += 2) {
         memcpy(byteval, value + counter, 2);
-        character = strtol(byteval, NULL, 16);
+        character = (char)strtol(byteval, NULL, 16);
         memcpy(retval + counter2, &character, 1);
         counter2++;
     }
@@ -73,7 +73,7 @@ errcase:
 unsigned char* getContents(char* filepath, uint32_t* outsize) {
     FILE *fin = NULL;
     uint32_t fsize = 0;
-    uint32_t readsize = 0;
+    size_t readsize = 0;
     unsigned char* buffer = NULL;
     unsigned char* tempbuffer = NULL;
 
@@ -168,11 +168,11 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
     int retcode = 0;
     int counter = 0;
     int reloccount = 0;
-    int tempcounter = 0;
+    unsigned int tempcounter = 0;
     uint32_t symptr = 0;
 #ifdef _WIN32
     void* funcptrlocation = NULL;
-    int32_t offsetvalue = 0;
+    size_t offsetvalue = 0;
 #endif
     char* entryfuncname = functionname;
 #if defined(__x86_64__) || defined(_WIN64)
@@ -411,7 +411,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
 #ifdef _WIN32
             /* So for some reason VS 2017 doesn't like this, but char* casting works, so just going to do that */
 #ifdef _MSC_VER
-            foo = (char*)(sectionMapping[coff_sym_ptr[tempcounter].SectionNumber - 1] + coff_sym_ptr[tempcounter].Value);
+            foo = (void(__cdecl*)(char*, unsigned long))(sectionMapping[coff_sym_ptr[tempcounter].SectionNumber - 1] + coff_sym_ptr[tempcounter].Value);
 #else
             foo = (void(*)(char *, unsigned long))(sectionMapping[coff_sym_ptr[tempcounter].SectionNumber - 1] + coff_sym_ptr[tempcounter].Value);
 #endif
