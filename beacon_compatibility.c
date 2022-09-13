@@ -84,6 +84,8 @@ void BeaconDataParse(datap* parser, char* buffer, int size) {
     return;
 }
 
+#ifndef BEACON_DATA_INT
+#define BEACON_DATA_INT
 int BeaconDataInt(datap* parser) {
     int32_t fourbyteint = 0;
     if (parser->length < 4) {
@@ -94,7 +96,10 @@ int BeaconDataInt(datap* parser) {
     parser->length -= 4;
     return (int)fourbyteint;
 }
+#endif
 
+#ifndef BEACON_DATA_SHORT
+#define BEACON_DATA_SHORT
 short BeaconDataShort(datap* parser) {
     int16_t retvalue = 0;
     if (parser->length < 2) {
@@ -105,11 +110,14 @@ short BeaconDataShort(datap* parser) {
     parser->length -= 2;
     return (short)retvalue;
 }
+#endif
 
 int BeaconDataLength(datap* parser) {
     return parser->length;
 }
 
+#ifndef BEACON_DATA_EXTRACT
+#define BEACON_DATA_EXTRACT
 char* BeaconDataExtract(datap* parser, int* size) {
     uint32_t length = 0;
     char* outdata = NULL;
@@ -132,6 +140,7 @@ char* BeaconDataExtract(datap* parser, int* size) {
     }
     return outdata;
 }
+#endif
 
 /* format API */
 
@@ -241,6 +250,8 @@ void BeaconPrintf(int type, char* fmt, ...) {
     return;
 }
 
+#ifndef BEACON_OUTPUT
+#define BEACON_OUTPUT
 void BeaconOutput(int type, char* data, int len) {
     char* tempptr = NULL;
     tempptr = realloc(beacon_compatibility_output, beacon_compatibility_size + len + 1);
@@ -254,15 +265,21 @@ void BeaconOutput(int type, char* data, int len) {
     beacon_compatibility_offset += len;
     return;
 }
+#endif
 
 /* Token Functions */
 
+#ifndef BEACON_USE_TOKEN
+#define BEACON_USE_TOKEN
 BOOL BeaconUseToken(HANDLE token) {
     /* Probably needs to handle DuplicateTokenEx too */
     SetThreadToken(NULL, token);
     return TRUE;
 }
+#endif
 
+#ifndef BEACON_REVERT_TOKEN
+#define BEACON_REVERT_TOKEN
 void BeaconRevertToken(void) {
     if (!RevertToSelf()) {
 #ifdef DEBUG
@@ -271,7 +288,10 @@ void BeaconRevertToken(void) {
     }
     return;
 }
+#endif
 
+#ifndef BEACON_IS_ADMIN
+#define BEACON_IS_ADMIN
 BOOL BeaconIsAdmin(void) {
     /* Leaving this to be implemented by people needing it */
 #ifdef DEBUG
@@ -279,7 +299,10 @@ BOOL BeaconIsAdmin(void) {
 #endif
     return FALSE;
 }
+#endif
 
+#ifndef BEACON_GET_SPAWN_TO
+#define BEACON_GET_SPAWN_TO
 /* Injection/spawning related stuffs
  *
  * These functions are basic place holders, and if implemented into something
@@ -302,7 +325,10 @@ void BeaconGetSpawnTo(BOOL x86, char* buffer, int length) {
     memcpy(buffer, tempBufferPath, strlen(tempBufferPath));
     return;
 }
+#endif
 
+#ifndef BEACON_SPAWN_TEMPORARY_PROCESS
+#define BEACON_SPAWN_TEMPORARY_PROCESS
 BOOL BeaconSpawnTemporaryProcess(BOOL x86, BOOL ignoreToken, STARTUPINFO * sInfo, PROCESS_INFORMATION * pInfo) {
     BOOL bSuccess = FALSE;
     if (x86) {
@@ -313,16 +339,23 @@ BOOL BeaconSpawnTemporaryProcess(BOOL x86, BOOL ignoreToken, STARTUPINFO * sInfo
     }
     return bSuccess;
 }
+#endif
 
+#ifndef BEACON_INJECT_PROCESS
+#define BEACON_INJECT_PROCESS
 void BeaconInjectProcess(HANDLE hProc, int pid, char* payload, int p_len, int p_offset, char * arg, int a_len) {
     /* Leaving this to be implemented by people needing/wanting it */
     return;
 }
+#endif
 
+#ifndef BEACON_INJECT_TEMPORARY_PROCESS
+#define BEACON_INJECT_TEMPORARY_PROCESS
 void BeaconInjectTemporaryProcess(PROCESS_INFORMATION* pInfo, char* payload, int p_len, int p_offset, char* arg, int a_len) {
     /* Leaving this to be implemented by people needing/wanting it */
     return;
 }
+#endif
 
 void BeaconCleanupProcess(PROCESS_INFORMATION* pInfo) {
     (void)CloseHandle(pInfo->hThread);
@@ -330,10 +363,13 @@ void BeaconCleanupProcess(PROCESS_INFORMATION* pInfo) {
     return;
 }
 
+#ifndef BEACON_TO_WIDE_CHAR
+#define BEACON_TO_WIDE_CHAR
 BOOL toWideChar(char* src, wchar_t* dst, int max) {
     /* Leaving this to be implemented by people needing/wanting it */
     return FALSE;
 }
+#endif
 
 char* BeaconGetOutputData(int *outsize) {
     char* outdata = beacon_compatibility_output;

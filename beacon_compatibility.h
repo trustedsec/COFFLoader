@@ -7,6 +7,7 @@
  * Built off of the beacon.h file provided to build for CS.
  */
 #ifndef BEACON_COMPATIBILITY_H_
+#define BEACON_COMPATIBILITY_H_
  /* Structures as is in beacon.h */
 extern unsigned char* InternalFunctions[29][2];
 typedef struct {
