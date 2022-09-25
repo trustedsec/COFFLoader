@@ -366,8 +366,9 @@ void BeaconCleanupProcess(PROCESS_INFORMATION* pInfo) {
 #ifndef BEACON_TO_WIDE_CHAR
 #define BEACON_TO_WIDE_CHAR
 BOOL toWideChar(char* src, wchar_t* dst, int max) {
-    /* Leaving this to be implemented by people needing/wanting it */
-    return FALSE;
+    if (max < sizeof(wchar_t))
+        return FALSE;
+    return MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, src, -1, dst, max / sizeof(wchar_t));
 }
 #endif
 
