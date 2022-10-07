@@ -18,6 +18,13 @@ typedef struct coff_file_header {
 
 /* AMD64  should always be here */
 #define MACHINETYPE_AMD64 0x8664
+#define MACHINETYPE_I386 0x14c
+
+#if defined(__x86_64__) || defined(_WIN64)
+#define ACTIVE_MACHINETYPE MACHINETYPE_AMD64
+#else
+#define ACTIVE_MACHINETYPE MACHINETYPE_I386
+#endif
 
 #pragma pack(push,1)
 
@@ -110,6 +117,7 @@ typedef struct coff_sym {
 #define COFFLOADER_ERROR_NO_DATA 3
 #define COFFLOADER_ERROR_RELOCATION 4
 #define COFFLOADER_ERROR_SYMBOLS 5
+#define COFFLOADER_ERROR_ARCH_MISMATCH 6
 
 
 int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, unsigned char* argumentdata, int argumentSize);

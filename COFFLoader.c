@@ -204,6 +204,10 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
         return COFFLOADER_ERROR_NO_DATA;
     }
     coff_header_ptr = (coff_file_header_t*)coff_data;
+    if (coff_header_ptr->Machine != ACTIVE_MACHINETYPE){
+        DEBUG_PRINT("ERROR: Not valid machine type\n");
+        return COFFLOADER_ERROR_ARCH_MISMATCH;
+    }
     DEBUG_PRINT("Machine 0x%X\n", coff_header_ptr->Machine);
     DEBUG_PRINT("Number of sections: %d\n", coff_header_ptr->NumberOfSections);
     DEBUG_PRINT("TimeDateStamp : %X\n", coff_header_ptr->TimeDateStamp);
