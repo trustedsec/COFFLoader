@@ -104,6 +104,14 @@ typedef struct coff_sym {
 #define IMAGE_SCN_CNT_UNINITIALIZED_DATA 0x00000080
 #define IMAGE_SCN_MEM_DISCARDABLE 0x02000000
 
+#define COFFLOADER_SUCCESS 0
+#define COFFLOADER_ERROR_GENERIC 1
+#define COFFLOADER_ERROR_MEM 2
+#define COFFLOADER_ERROR_NO_DATA 3
+#define COFFLOADER_ERROR_RELOCATION 4
+#define COFFLOADER_ERROR_SYMBOLS 5
+
+
 int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, unsigned char* argumentdata, int argumentSize);
 unsigned char* unhexlify(unsigned char* value, int *outlen);
 #endif

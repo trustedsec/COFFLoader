@@ -165,7 +165,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
     coff_sect_t *coff_sect_ptr = NULL;
     coff_reloc_t *coff_reloc_ptr = NULL;
     coff_sym_t * coff_sym_ptr = NULL;
-    int retcode = 0;
+    int retcode = COFFLOADER_SUCCESS; /* This is just 0 */
     int counter = 0;
     int reloccount = 0;
     unsigned int tempcounter = 0;
@@ -183,7 +183,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
     /* Set the input function name to match the 32 bit version */
     entryfuncname = calloc(strlen(functionname) + 2, 1);
     if (entryfuncname == NULL) {
-        return 1;
+        return COFFLOADER_ERROR_GENERIC;
     }
     (void)sprintf(entryfuncname, "_%s", functionname);
 #endif
@@ -201,7 +201,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
 
     if (coff_data == NULL) {
         DEBUG_PRINT("Can't execute NULL\n");
-        return 1;
+        return COFFLOADER_ERROR_NO_DATA;
     }
     coff_header_ptr = (coff_file_header_t*)coff_data;
     DEBUG_PRINT("Machine 0x%X\n", coff_header_ptr->Machine);
@@ -240,11 +240,19 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
 #ifdef DEBUG
         sectionSize[counter] = coff_sect_ptr->SizeOfRawData;
 #endif
-        if (sectionMapping[counter] == NULL) {
+        if (sectionMapping[counter] == NULL && coff_sect_ptr->SizeOfRawData != 0) {
             DEBUG_PRINT("Failed to allocate memory\n");
+            retcode = COFFLOADER_ERROR_MEM;
+            goto cleanup;
         }
-        DEBUG_PRINT("Allocated section %d at %p\n", counter, sectionMapping[counter]);
-        memcpy(sectionMapping[counter], coff_data + coff_sect_ptr->PointerToRawData, coff_sect_ptr->SizeOfRawData);
+        if (coff_sect_ptr->PointerToRawData != 0){
+            DEBUG_PRINT("Allocated section %d at %p\n", counter, sectionMapping[counter]);
+            memcpy(sectionMapping[counter], coff_data + coff_sect_ptr->PointerToRawData, coff_sect_ptr->SizeOfRawData);
+        }
+        else{
+            DEBUG_PRINT("BSS Section, nulling memory\n");
+            memset(sectionMapping[counter], 0, coff_sect_ptr->SizeOfRawData);
+        }
 #endif
     }
 
@@ -256,6 +264,10 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
     functionMapping = VirtualAlloc(NULL, 2048, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
 #endif
 #endif
+    if (functionMapping == NULL){
+        retcode = COFFLOADER_ERROR_MEM;
+        goto cleanup;
+    }
 
     /* Start parsing the relocations, and *hopefully* handle them correctly. */
     for (counter = 0; counter < coff_header_ptr->NumberOfSections; counter++) {
@@ -291,7 +303,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                     DEBUG_PRINT("\t\tEnd of Relocation Bytes: 0x%X\n", sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4);
                     if (((char*)(sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] + offsetvalue) - (char*)(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4)) > 0xffffffff) {
                         DEBUG_PRINT("Relocations > 4 gigs away, exiting\n");
-                        retcode = 1;
+                        retcode = COFFLOADER_ERROR_RELOCATION;
                         goto cleanup;
                     }
                     offsetvalue = ((char*)(sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] + offsetvalue) - (char*)(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4));
@@ -305,7 +317,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                     DEBUG_PRINT("\t\tReadin offset value: 0x%X\n", offsetvalue);
                     if ((sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4)) > 0xffffffff) {
                         DEBUG_PRINT("Relocations > 4 gigs away, exiting\n");
-                        retcode = 1;
+                        retcode = COFFLOADER_ERROR_RELOCATION;
                         goto cleanup;
                     }
                     offsetvalue += (sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4));
@@ -335,7 +347,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                 funcptrlocation = process_symbol(((char*)(coff_sym_ptr + coff_header_ptr->NumberOfSymbols)) + symptr);
                 if (funcptrlocation == NULL) {
                     DEBUG_PRINT("Failed to resolve symbol\n");
-                    retcode = 1;
+                    retcode = COFFLOADER_ERROR_SYMBOLS;
                     goto cleanup;
                 }
 #ifdef _WIN64
@@ -344,7 +356,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                     DEBUG_PRINT("Doing function relocation\n");
                     if (((functionMapping + (functionMappingCount * 8)) - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4)) > 0xffffffff) {
                         DEBUG_PRINT("Relocations > 4 gigs away, exiting\n");
-                        retcode = 1;
+                        retcode = COFFLOADER_ERROR_RELOCATION;
                         goto cleanup;
                     }
                     memcpy(functionMapping + (functionMappingCount * 8), &funcptrlocation, sizeof(uint64_t));
@@ -359,7 +371,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                     memcpy(&offsetvalue, sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, sizeof(int32_t));
                     if ((sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4)) > 0xffffffff) {
                         DEBUG_PRINT("Relocations > 4 gigs away, exiting\n");
-                        retcode = 1;
+                        retcode = COFFLOADER_ERROR_RELOCATION;
                         goto cleanup;
                     }
                     DEBUG_PRINT("\t\tReadin offset value: 0x%X\n", offsetvalue);
