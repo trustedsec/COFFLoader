@@ -333,13 +333,21 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                 /* This is the code to handle functions themselves, so using a makeshift Global Offset Table for it */
 #ifdef _WIN32
                 funcptrlocation = process_symbol(((char*)(coff_sym_ptr + coff_header_ptr->NumberOfSymbols)) + symptr);
-                if (funcptrlocation == NULL) {
+                if (funcptrlocation == NULL && coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber == 0) {
                     DEBUG_PRINT("Failed to resolve symbol\n");
                     retcode = 1;
                     goto cleanup;
                 }
 #ifdef _WIN64
-                if (coff_reloc_ptr->Type == IMAGE_REL_AMD64_REL32 && funcptrlocation != NULL) {
+                if (coff_reloc_ptr->Type == IMAGE_REL_AMD64_ADDR64) {
+                    memcpy(&longoffsetvalue, sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, sizeof(uint64_t));
+                    DEBUG_PRINT("\tReadin longOffsetValue : 0x%llX\n", longoffsetvalue);
+                    longoffsetvalue = (uint64_t)(sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] + (uint64_t)longoffsetvalue);
+                    DEBUG_PRINT("\tModified longOffsetValue : 0x%llX Base Address: %p\n", longoffsetvalue, sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1]);
+                    memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &longoffsetvalue, sizeof(uint64_t));
+                }
+
+                else if (coff_reloc_ptr->Type == IMAGE_REL_AMD64_REL32 && funcptrlocation != NULL) {
                     /* This is Type == 4 relocation code */
                     DEBUG_PRINT("Doing function relocation\n");
                     if (((functionMapping + (functionMappingCount * 8)) - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4)) > 0xffffffff) {
@@ -367,6 +375,22 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                     DEBUG_PRINT("\t\tRelative address: 0x%X\n", offsetvalue);
                     memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
                 }
+                else if (coff_reloc_ptr->Type == IMAGE_REL_AMD64_ADDR32NB) {
+                    memcpy(&offsetvalue, sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, sizeof(int32_t));
+                    DEBUG_PRINT("\tReadin OffsetValue : 0x%0X\n", offsetvalue);
+                    DEBUG_PRINT("\t\tReferenced Section: 0x%X\n", sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] + offsetvalue);
+                    DEBUG_PRINT("\t\tEnd of Relocation Bytes: 0x%X\n", sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4);
+                    if (((char*)(sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] + offsetvalue) - (char*)(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4)) > 0xffffffff) {
+                        DEBUG_PRINT("Relocations > 4 gigs away, exiting\n");
+                        retcode = 1;
+                        goto cleanup;
+                    }
+                    offsetvalue = ((char*)(sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] + offsetvalue) - (char*)(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4));
+                    DEBUG_PRINT("\tOffsetValue : 0x%0X\n", offsetvalue);
+                    DEBUG_PRINT("\t\tSetting 0x%X to %X\n", sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue);
+                    memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
+                }
+
                 else {
                     DEBUG_PRINT("No code for relocation type: %d\n", coff_reloc_ptr->Type);
                 }
