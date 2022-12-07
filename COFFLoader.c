@@ -318,10 +318,21 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                 }
 #else
              /* This is Type == IMAGE_REL_I386_DIR32 relocation code */
-                memcpy(&offsetvalue, sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, sizeof(int32_t));
-                DEBUG_PRINT("\tReadin OffsetValue : 0x%0X\n", offsetvalue);
-                offsetvalue = (uint32_t)(sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1]) + offsetvalue;
-                memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
+                if (coff_reloc_ptr->Type == IMAGE_REL_I386_DIR32){
+                    memcpy(&offsetvalue, sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, sizeof(int32_t));
+                    DEBUG_PRINT("\tReadin OffsetValue : 0x%0X\n", offsetvalue);
+                    offsetvalue = (uint32_t)(sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1]) + offsetvalue;
+                    offsetvalue += coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].Value;
+                    memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
+                }
+                else if (coff_reloc_ptr->Type == IMAGE_REL_I386_REL32){
+                    memcpy(&offsetvalue, sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, sizeof(int32_t));
+                    DEBUG_PRINT("\tReadin OffsetValue : 0x%0X\n", offsetvalue);
+                    offsetvalue += (sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4));
+                    offsetvalue += coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].Value;
+                    memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
+                    
+                }
 #endif //WIN64 statement close
 #endif //WIN32 statement close
             }
@@ -399,11 +410,21 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                     DEBUG_PRINT("No code for relocation type: %d\n", coff_reloc_ptr->Type);
                 }
 #else
-                /* This is Type == IMAGE_REL_I386_DIR32 relocation code */
-                memcpy(functionMapping + (functionMappingCount * 4), &funcptrlocation, sizeof(uint32_t));
-                offsetvalue = (int32_t)(functionMapping + (functionMappingCount * 4));
-                memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
-                functionMappingCount++;
+                if (coff_reloc_ptr->Type == IMAGE_REL_I386_DIR32){
+                    /* This is Type == IMAGE_REL_I386_DIR32 relocation code */
+                    memcpy(functionMapping + (functionMappingCount * 4), &funcptrlocation, sizeof(uint32_t));
+                    offsetvalue = (int32_t)(functionMapping + (functionMappingCount * 4));
+                    memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
+                    functionMappingCount++;
+                }
+                else if (coff_reloc_ptr->Type == IMAGE_REL_I386_REL32){
+                    memcpy(&offsetvalue, sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, sizeof(int32_t));
+                    DEBUG_PRINT("\tReadin OffsetValue : 0x%0X\n", offsetvalue);
+                    offsetvalue += (sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4));
+                    offsetvalue += coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].Value;
+                    memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
+                    
+                }
 #endif
 #endif
             }
