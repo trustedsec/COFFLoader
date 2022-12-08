@@ -103,6 +103,10 @@ unsigned char* getContents(char* filepath, uint32_t* outsize) {
     return buffer;
 }
 
+static inline BOOL starts_with(const char* string, const char* substring) {
+    return strncmp(string, substring, strlen(substring)) == 0;
+}
+
 /* Helper function to process a symbol string, determine what function and
  * library its from, and return the right function pointer. Will need to
  * implement in the loading of the beacon internal functions, or any other
@@ -117,10 +121,10 @@ void* process_symbol(char* symbolstring) {
     HMODULE llHandle = NULL;
 #endif
 
-    memcpy(localcopy, symbolstring, strlen(symbolstring));
-    if (strncmp(symbolstring, PREPENDSYMBOLVALUE"Beacon", strlen(PREPENDSYMBOLVALUE"Beacon")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"toWideChar", strlen(PREPENDSYMBOLVALUE"toWideChar")) == 0 ||
-    strncmp(symbolstring, PREPENDSYMBOLVALUE"GetProcAddress", strlen(PREPENDSYMBOLVALUE"GetProcAddress")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"LoadLibraryA", strlen(PREPENDSYMBOLVALUE"LoadLibraryA")) == 0 ||
-    strncmp(symbolstring, PREPENDSYMBOLVALUE"GetModuleHandleA", strlen(PREPENDSYMBOLVALUE"GetModuleHandleA")) == 0 || strncmp(symbolstring, PREPENDSYMBOLVALUE"FreeLibrary", strlen(PREPENDSYMBOLVALUE"FreeLibrary")) == 0) {
+    strncpy(localcopy, symbolstring, sizeof(localcopy) - 1);
+    if (starts_with(symbolstring, PREPENDSYMBOLVALUE"Beacon") || starts_with(symbolstring, PREPENDSYMBOLVALUE"toWideChar") ||
+        starts_with(symbolstring, PREPENDSYMBOLVALUE"GetProcAddress") || starts_with(symbolstring, PREPENDSYMBOLVALUE"LoadLibraryA") ||
+        starts_with(symbolstring, PREPENDSYMBOLVALUE"GetModuleHandleA") || starts_with(symbolstring, PREPENDSYMBOLVALUE"FreeLibrary")) {
         localfunc = symbolstring + strlen(PREPENDSYMBOLVALUE);
         DEBUG_PRINT("\t\tInternalFunction: %s\n", localfunc);
         /* TODO: Get internal symbol here and set to functionaddress, then
@@ -128,7 +132,7 @@ void* process_symbol(char* symbolstring) {
 #if defined(_WIN32)
         for (tempcounter = 0; tempcounter < 29; tempcounter++) {
             if (InternalFunctions[tempcounter][0] != NULL) {
-                if (strcmp(localfunc, (char*)(InternalFunctions[tempcounter][0])) == 0) {
+                if (starts_with(localfunc, (char*)(InternalFunctions[tempcounter][0]))) {
                     functionaddress = (void*)InternalFunctions[tempcounter][1];
                     return functionaddress;
                 }
@@ -322,6 +326,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                     DEBUG_PRINT("\tReadin OffsetValue : 0x%0X\n", offsetvalue);
                     offsetvalue = (uint32_t)(sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1]) + offsetvalue;
                     offsetvalue += coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].Value;
+                    DEBUG_PRINT("\tSetting 0x%p to: 0x%X\n", sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, offsetvalue);
                     memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
                 }
                 else if (coff_reloc_ptr->Type == IMAGE_REL_I386_REL32){
@@ -329,6 +334,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                     DEBUG_PRINT("\tReadin OffsetValue : 0x%0X\n", offsetvalue);
                     offsetvalue += (sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4));
                     offsetvalue += coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].Value;
+                    DEBUG_PRINT("\tSetting 0x%p to relative address: 0x%X\n", sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, offsetvalue);
                     memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
                     
                 }
@@ -403,25 +409,37 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
                     DEBUG_PRINT("\tSetting 0x%p to OffsetValue: 0x%X\n", sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, offsetvalue);
                     memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
                 }
-
                 else {
                     DEBUG_PRINT("No code for relocation type: %d\n", coff_reloc_ptr->Type);
                 }
 #else
-                if (coff_reloc_ptr->Type == IMAGE_REL_I386_DIR32){
+                if (coff_reloc_ptr->Type == IMAGE_REL_I386_DIR32 && funcptrlocation != NULL){
                     /* This is Type == IMAGE_REL_I386_DIR32 relocation code */
                     memcpy(functionMapping + (functionMappingCount * 4), &funcptrlocation, sizeof(uint32_t));
                     offsetvalue = (int32_t)(functionMapping + (functionMappingCount * 4));
+                    DEBUG_PRINT("\tSetting 0x%p to virtual address: 0x%X\n", sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, offsetvalue);
                     memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
                     functionMappingCount++;
+                }
+                else if (coff_reloc_ptr->Type == IMAGE_REL_I386_DIR32) {
+                    memcpy(&offsetvalue, sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, sizeof(int32_t));
+                    DEBUG_PRINT("\tReadin OffsetValue : 0x%0X\n", offsetvalue);
+                    offsetvalue = (uint32_t)(sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1]) + offsetvalue;
+                    offsetvalue += coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].Value;
+                    DEBUG_PRINT("\tSetting 0x%p to virtual address: 0x%X\n", sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, offsetvalue);
+                    memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
                 }
                 else if (coff_reloc_ptr->Type == IMAGE_REL_I386_REL32){
                     memcpy(&offsetvalue, sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, sizeof(int32_t));
                     DEBUG_PRINT("\tReadin OffsetValue : 0x%0X\n", offsetvalue);
                     offsetvalue += (sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4));
                     offsetvalue += coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].Value;
+                    DEBUG_PRINT("\tSetting 0x%p to relative address: 0x%X\n", sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, offsetvalue);
                     memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
                     
+                }
+                else {
+                    DEBUG_PRINT("No code for relocation type: %d\n", coff_reloc_ptr->Type);
                 }
 #endif
 #endif
