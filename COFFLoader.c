@@ -103,7 +103,7 @@ unsigned char* getContents(char* filepath, uint32_t* outsize) {
     return buffer;
 }
 
-static inline BOOL starts_with(const char* string, const char* substring) {
+static BOOL starts_with(const char* string, const char* substring) {
     return strncmp(string, substring, strlen(substring)) == 0;
 }
 
