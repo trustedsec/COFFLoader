@@ -26,7 +26,7 @@
 
 
  /* Data Parsing */
-unsigned char* InternalFunctions[29][2] = {
+unsigned char* InternalFunctions[30][2] = {
     {(unsigned char*)"BeaconDataParse", (unsigned char*)BeaconDataParse},
     {(unsigned char*)"BeaconDataInt", (unsigned char*)BeaconDataInt},
     {(unsigned char*)"BeaconDataShort", (unsigned char*)BeaconDataShort},
@@ -53,7 +53,9 @@ unsigned char* InternalFunctions[29][2] = {
     {(unsigned char*)"LoadLibraryA", (unsigned char*)LoadLibraryA},
     {(unsigned char*)"GetProcAddress", (unsigned char*)GetProcAddress},
     {(unsigned char*)"GetModuleHandleA", (unsigned char*)GetModuleHandleA},
-    {(unsigned char*)"FreeLibrary", (unsigned char*)FreeLibrary}
+    {(unsigned char*)"FreeLibrary", (unsigned char*)FreeLibrary},
+    {(unsigned char*)"__C_specific_handler", NULL}
+
 };
 
 uint32_t swap_endianess(uint32_t indata) {

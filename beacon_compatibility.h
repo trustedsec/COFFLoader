@@ -8,7 +8,7 @@
  */
 #ifndef BEACON_COMPATIBILITY_H_
  /* Structures as is in beacon.h */
-extern unsigned char* InternalFunctions[29][2];
+extern unsigned char* InternalFunctions[30][2];
 typedef struct {
     char * original; /* the original buffer [so we can free it] */
     char * buffer;   /* current pointer into our buffer */
