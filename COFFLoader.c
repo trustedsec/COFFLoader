@@ -201,7 +201,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
     (void)sprintf(entryfuncname, "_%s", functionname);
 #endif
     HMODULE kern = GetModuleHandleA("kernel32.dll");
-    InternalFunctions[29][1] = GetProcAddress(kern, "__C_specific_handler");
+    InternalFunctions[29][1] = (unsigned char *) GetProcAddress(kern, "__C_specific_handler");
     DEBUG_PRINT("found address of %x\n", InternalFunctions[29][1]);
 #ifdef _WIN32
     /* NOTE: I just picked a size, look to see what is max/normal. */
