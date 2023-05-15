@@ -608,7 +608,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
 #ifdef _WIN32
     cleanup :
             if (sectionMapping){
-                for (tempcounter = 0; tempcounter < 25; tempcounter++) {
+                for (tempcounter = 0; tempcounter < coff_header_ptr->NumberOfSections; tempcounter++) {
                     if (sectionMapping[tempcounter]) {
                         VirtualFree(sectionMapping[tempcounter], 0, MEM_RELEASE);
                     }
