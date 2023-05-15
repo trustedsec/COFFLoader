@@ -42,7 +42,7 @@ unsigned char* unhexlify(unsigned char* value, int *outlen) {
         return NULL;
     }
     DEBUG_PRINT("Unhexlify Strlen: %lu\n", (long unsigned int)strlen((char*)value));
-    if (value == NULL || strlen((char*)value) % 2 != 0) {
+    if (strlen((char*)value) % 2 != 0) {
         DEBUG_PRINT("Either value is NULL, or the hexlified string isn't valid\n");
         goto errcase;
     }
@@ -86,6 +86,7 @@ unsigned char* getContents(char* filepath, uint32_t* outsize) {
     fseek(fin, 0, SEEK_SET);
     tempbuffer = calloc(fsize, 1);
     if (tempbuffer == NULL) {
+        fclose(fin);
         return NULL;
     }
     memset(tempbuffer, 0, fsize);
@@ -94,6 +95,7 @@ unsigned char* getContents(char* filepath, uint32_t* outsize) {
     fclose(fin);
     buffer = calloc(readsize, 1);
     if (buffer == NULL) {
+        free(tempbuffer);
         return NULL;
     }
     memset(buffer, 0, readsize);
@@ -205,17 +207,21 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
     DEBUG_PRINT("found address of %x\n", InternalFunctions[29][1]);
 #ifdef _WIN32
     /* NOTE: I just picked a size, look to see what is max/normal. */
-    char* sectionMapping[25] = { 0 };
+    char** sectionMapping = NULL;
 #ifdef DEBUG
-    int sectionSize[25] = { 0 };
+    int *sectionSize = NULL;
 #endif
     void(*foo)(char* in, unsigned long datalen);
     char* functionMapping = NULL;
     int functionMappingCount = 0;
+    int relocationCount = 0;
 #endif
 
     if (coff_data == NULL) {
         DEBUG_PRINT("Can't execute NULL\n");
+        if (entryfuncname && entryfuncname != functionname){
+            free(entryfuncname);
+        }
         return 1;
     }
     coff_header_ptr = (coff_file_header_t*)coff_data;
@@ -223,10 +229,19 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
     DEBUG_PRINT("Number of sections: %d\n", coff_header_ptr->NumberOfSections);
     DEBUG_PRINT("TimeDateStamp : %X\n", coff_header_ptr->TimeDateStamp);
     DEBUG_PRINT("PointerToSymbolTable : 0x%X\n", coff_header_ptr->PointerToSymbolTable);
-    DEBUG_PRINT("NumberOfSymbols: %d\n", coff_header_ptr->NumberOfSymbols);
+    DEBUG_PRINT("NumberOfSymbols: %u\n", coff_header_ptr->NumberOfSymbols);
     DEBUG_PRINT("OptionalHeaderSize: %d\n", coff_header_ptr->SizeOfOptionalHeader);
     DEBUG_PRINT("Characteristics: %d\n", coff_header_ptr->Characteristics);
     DEBUG_PRINT("\n");
+    /* Actually allocate an array to keep track of the sections */
+    sectionMapping = (char**)calloc(sizeof(char*)*(coff_header_ptr->NumberOfSections+1), 1);
+#ifdef DEBUG
+    sectionSize = (int*)calloc(sizeof(int)*(coff_header_ptr->NumberOfSections+1), 1);
+#endif
+    if (sectionMapping == NULL){
+        DEBUG_PRINT("Failed to allocate sectionMapping\n");
+        goto cleanup;
+    }
     coff_sym_ptr = (coff_sym_t*)(coff_data + coff_header_ptr->PointerToSymbolTable);
 
     /* Handle the allocation and copying of the sections we're going to use
@@ -241,6 +256,7 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
         DEBUG_PRINT("PointerToRelocations: 0x%X\n", coff_sect_ptr->PointerToRelocations);
         DEBUG_PRINT("PointerToRawData: 0x%X\n", coff_sect_ptr->PointerToRawData);
         DEBUG_PRINT("NumberOfRelocations: %d\n", coff_sect_ptr->NumberOfRelocations);
+        relocationCount += coff_sect_ptr->NumberOfRelocations;
         /* NOTE: When changing the memory loading information of the loader,
          * you'll want to use this field and the defines from the Section
          * Flags table of Microsofts page, some defined in COFFLoader.h */
@@ -267,14 +283,19 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
         }
 #endif
     }
-
+    DEBUG_PRINT("Total Relocations: %d\n", relocationCount);
     /* Allocate and setup the GOT for functions, same here as above. */
+    /* Actually allocate enough for worst case every relocation, may not be needed, but hey better safe than sorry */
 #ifdef _WIN32
 #ifdef _WIN64
-    functionMapping = VirtualAlloc(NULL, 2048, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
+    functionMapping = VirtualAlloc(NULL, relocationCount*8, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
 #else
-    functionMapping = VirtualAlloc(NULL, 2048, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
+    functionMapping = VirtualAlloc(NULL, relocationCount*8, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
 #endif
+    if (functionMapping == NULL){
+        DEBUG_PRINT("Failed to allocate functionMapping\n");
+        goto cleanup;
+    }
 #endif
 
     /* Start parsing the relocations, and *hopefully* handle them correctly. */
@@ -550,8 +571,8 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
     /* Some debugging code to see what the sections look like in memory */
 #if DEBUG
 #ifdef _WIN32
-    for (tempcounter = 0; tempcounter < 10; tempcounter++) {
-        DEBUG_PRINT("Section: %d\n", tempcounter);
+    for (tempcounter = 0; tempcounter < coff_header_ptr->NumberOfSections; tempcounter++) {
+        DEBUG_PRINT("Section: %u\n", tempcounter);
         if (sectionMapping[tempcounter] != NULL) {
             DEBUG_PRINT("\t");
             for (counter = 0; counter < sectionSize[tempcounter]; counter++) {
@@ -586,13 +607,29 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
     /* Cleanup the allocated memory */
 #ifdef _WIN32
     cleanup :
-            for (tempcounter = 0; tempcounter < 25; tempcounter++) {
-                if (sectionMapping[tempcounter]) {
-                    VirtualFree(sectionMapping[tempcounter], 0, MEM_RELEASE);
+            if (sectionMapping){
+                for (tempcounter = 0; tempcounter < 25; tempcounter++) {
+                    if (sectionMapping[tempcounter]) {
+                        VirtualFree(sectionMapping[tempcounter], 0, MEM_RELEASE);
+                    }
                 }
+                free(sectionMapping);
+                sectionMapping = NULL;
             }
-            VirtualFree(functionMapping, 0, MEM_RELEASE);
+#ifdef DEBUG
+            if (sectionSize){
+                free(sectionSize);
+                sectionSize = NULL;
+            }
 #endif
+            if (functionMapping){
+                VirtualFree(functionMapping, 0, MEM_RELEASE);
+            }
+#endif
+            if (entryfuncname && entryfuncname != functionname){
+                free(entryfuncname);
+            }
+
             DEBUG_PRINT("Returning\n");
             return retcode;
 }
