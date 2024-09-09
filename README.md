@@ -38,6 +38,47 @@ b'0400000005000000'
 Beacon>exit
 ```
 
+## BOF Arguments
+You can find what arguments are required by each BOF by viewing the source code. Using the Net User BOF as an example, you would view the `src/SA/netuser/entry.c` file found in the `CS-Situational-Awareness-BOF` Github and then view the arguments found in the `void go()` function.
+
+``` CPP
+VOID go(IN PCHAR Buffer, IN ULONG Length)
+{
+    datap parser;
+    wchar_t *username = NULL;
+    wchar_t *domain = NULL;
+
+    BeaconDataParse(&parser, Buffer, Length);
+    username = (wchar_t *)BeaconDataExtract(&parser, NULL);
+    domain = (wchar_t *)BeaconDataExtract(&parser, NULL);
+    domain = *domain == 0 ? NULL : domain;
+    netuserinfo(username, domain);
+
+    printoutput(TRUE);
+};
+```
+
+We can see that our Net User BOF requires a "username" and "domain" (*which we can get by running the whoami BOF*). Using the `beacon_generate.py` helper script, we would generate the arguments like this:
+
+```
+COFFLoader % python3 beacon_generate.py
+Beacon Argument Generator
+Beacon>addWString Administrator
+Beacon>addWString client2
+Beacon>generate
+b'340000001c000000410064006d0069006e006900730074007200610074006f00720000001000000063006c00690065006e00740032000000'
+Beacon>exit
+```
+
+Lastly, copy the hexified numeric values (just the numbers) into your execution command
+``` Shell
+COFFLoader64.exe go ..\CS-Situational-Awareness-BOF\SA\netuser\netuser.x64.o 340000001c000000410064006d0069006e006900730074007200610074006f00720000001000000063006c00690065006e00740032000000
+```
+You can find more detailed examples at this link:\
+https://trustedsec.com/blog/situational-awareness-bofs-for-script-kiddies
+
+
+
 ## Running
 An example of how to run a BOF is below.
 
