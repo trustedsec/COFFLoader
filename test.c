@@ -3,10 +3,18 @@
 #include <lm.h>
 #include <dsgetdc.h>
 #include "beacon.h"
+
+#ifdef __cplusplus
+#if defined(_MSC_VER) || defined(__GNUC__)
+#define restrict __restrict
+#else
+#define restrict
+#endif // defined(_MSC_VER) || defined(__GNUC__)
+#endif // __cplusplus
  
 DECLSPEC_IMPORT DWORD WINAPI NETAPI32$DsGetDcNameA(LPVOID, LPVOID, LPVOID, LPVOID, ULONG, LPVOID);
 DECLSPEC_IMPORT DWORD WINAPI NETAPI32$NetApiBufferFree(LPVOID);
-WINBASEAPI int __cdecl MSVCRT$printf(const char * __restrict__ _Format,...);
+WINBASEAPI int __cdecl MSVCRT$printf(const char *restrict _Format,...);
 
 char* TestGlobalString = "This is a global string";
 /* Can't do stuff like "int testvalue;" in a coff file, because it assumes that
