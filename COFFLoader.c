@@ -32,6 +32,8 @@
 #define PREPENDSYMBOLVALUE "__imp__"
 #endif
 
+#define COFFLOADER_RETURN_VAL_IF(expr, val, fmt, ...) if ((expr)) { DEBUG_PRINT(fmt, __VA_ARGS__); return val; }
+
 unsigned char* unhexlify(unsigned char* value, int *outlen) {
     unsigned char* retval = NULL;
     char byteval[3] = { 0 };
@@ -176,15 +178,44 @@ void* process_symbol(char* symbolstring) {
  * types need to be handled, and needs to have different arguments for use
  * in any agent. */
 int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, unsigned char* argumentdata, int argumentSize) {
-    coff_file_header_t *coff_header_ptr = NULL;
     coff_sect_t *coff_sect_ptr = NULL;
     coff_reloc_t *coff_reloc_ptr = NULL;
-    coff_sym_t * coff_sym_ptr = NULL;
     int retcode = 0;
     int counter = 0;
     int reloccount = 0;
     unsigned int tempcounter = 0;
     uint32_t symptr = 0;
+
+    COFFLOADER_RETURN_VAL_IF(functionname == NULL, 1, "Function name is NULL\n");
+    COFFLOADER_RETURN_VAL_IF(coff_data == NULL, 1, "Can't execute NULL\n");
+    COFFLOADER_RETURN_VAL_IF(filesize == 0, 1, "COFF file size is 0\n");
+    COFFLOADER_RETURN_VAL_IF(filesize < sizeof(struct coff_file_header), 1,
+            "COFF file size too small for a COFF file header\n");
+
+    struct coff_file_header *coff_header_ptr = (struct coff_file_header*)coff_data;
+
+    COFFLOADER_RETURN_VAL_IF(coff_header_ptr->PointerToSymbolTable < sizeof(struct coff_file_header),
+            1, "COFF symbol table offset is inside the file header\n");
+    COFFLOADER_RETURN_VAL_IF(filesize < coff_header_ptr->PointerToSymbolTable, 1,
+            "COFF symbol table offset exceeds file size\n");
+
+    // Byte index of the strtab/end of symtab
+    size_t coff_strtab_index =
+        coff_header_ptr->PointerToSymbolTable + coff_header_ptr->NumberOfSymbols * sizeof(struct coff_sym);
+
+    COFFLOADER_RETURN_VAL_IF(filesize < coff_strtab_index, 1, "COFF symbol table exceeds COFF file size\n");
+    COFFLOADER_RETURN_VAL_IF(filesize < coff_strtab_index + sizeof(uint32_t), 1,
+            "COFF string table offset exceeds COFF file size\n");
+
+    uint32_t coff_strtab_size = *(uint32_t*)(coff_data + coff_strtab_index);
+
+    COFFLOADER_RETURN_VAL_IF(filesize < coff_strtab_index + coff_strtab_size, 1,
+            "COFF string table exceeds COFF file size\n");
+    COFFLOADER_RETURN_VAL_IF(filesize != coff_strtab_index + coff_strtab_size, 1,
+            "COFF file contains extraneous data\n");
+
+    struct coff_sym *coff_sym_ptr = (struct coff_sym*)(coff_data + coff_header_ptr->PointerToSymbolTable);
+
 #ifdef _WIN32
     void* funcptrlocation = NULL;
     size_t offsetvalue = 0;
@@ -217,14 +248,6 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
     int relocationCount = 0;
 #endif
 
-    if (coff_data == NULL) {
-        DEBUG_PRINT("Can't execute NULL\n");
-        if (entryfuncname && entryfuncname != functionname){
-            free(entryfuncname);
-        }
-        return 1;
-    }
-    coff_header_ptr = (coff_file_header_t*)coff_data;
     DEBUG_PRINT("Machine 0x%X\n", coff_header_ptr->Machine);
     DEBUG_PRINT("Number of sections: %d\n", coff_header_ptr->NumberOfSections);
     DEBUG_PRINT("TimeDateStamp : %X\n", coff_header_ptr->TimeDateStamp);
@@ -242,7 +265,6 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
         DEBUG_PRINT("Failed to allocate sectionMapping\n");
         goto cleanup;
     }
-    coff_sym_ptr = (coff_sym_t*)(coff_data + coff_header_ptr->PointerToSymbolTable);
 
     /* Handle the allocation and copying of the sections we're going to use
      * for right now I'm just VirtualAlloc'ing memory, this can be changed to
