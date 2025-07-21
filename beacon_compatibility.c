@@ -214,12 +214,12 @@ void BeaconFormatPrintf(formatp* format, char* fmt, ...) {
     va_start(args, fmt);
     length = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
-    if (format->length + length > format->size) {
+    if (format->length + length + 1 > format->size) {
         return;
     }
 
     va_start(args, fmt);
-    (void)vsnprintf(format->buffer, length, fmt, args);
+    (void)vsnprintf(format->buffer, length + 1, fmt, args);
     va_end(args);
     format->length += length;
     format->buffer += length;
