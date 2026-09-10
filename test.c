@@ -15,6 +15,9 @@
 DECLSPEC_IMPORT DWORD WINAPI NETAPI32$DsGetDcNameA(LPVOID, LPVOID, LPVOID, LPVOID, ULONG, LPVOID);
 DECLSPEC_IMPORT DWORD WINAPI NETAPI32$NetApiBufferFree(LPVOID);
 WINBASEAPI int __cdecl MSVCRT$printf(const char *restrict _Format,...);
+WINBASEAPI void* __cdecl MSVCRT$calloc(size_t,size_t);
+WINBASEAPI void __cdecl MSVCRT$free(void*);
+WINBASEAPI void* __cdecl MSVCRT$memset(void*,int,size_t);
 
 char* TestGlobalString = "This is a global string";
 /* Can't do stuff like "int testvalue;" in a coff file, because it assumes that
@@ -38,6 +41,10 @@ int test2(void){
 void go(char * args, unsigned long alen) {
     DWORD dwRet;
     PDOMAIN_CONTROLLER_INFO pdcInfo;
+    volatile char* testLeak = MSVCRT$calloc(10, 1);
+    MSVCRT$printf("Trying to write to testLeak 8 bytes: %d\n", testvalue);
+    MSVCRT$memset((void*)testLeak, 0, 8);
+    testLeak[11] = 0;
     BeaconPrintf(1, "This GlobalString \"%s\"\n", TestGlobalString);
     MSVCRT$printf("Test Value: %d\n", testvalue);
     (void)test();
@@ -46,7 +53,7 @@ void go(char * args, unsigned long alen) {
     dwRet = NETAPI32$DsGetDcNameA(NULL, NULL, NULL, NULL, 0, &pdcInfo);
     if (ERROR_SUCCESS == dwRet) {
         MSVCRT$printf("%s", pdcInfo->DomainName);
+        NETAPI32$NetApiBufferFree(pdcInfo);
     }
  
-    NETAPI32$NetApiBufferFree(pdcInfo);
 }

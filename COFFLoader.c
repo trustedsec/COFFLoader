@@ -15,9 +15,18 @@
 #if defined(_WIN32)
 #include <windows.h>
 #include "beacon_compatibility.h"
+#ifdef ALLOC_TRACKING
+#include "alloc_tracker.h"
+#endif
 #endif
 
 #include "COFFLoader.h"
+
+#ifdef ALLOC_TRACKING
+#define MAX_LOOP_COUNT 3
+#else
+#define MAX_LOOP_COUNT 1
+#endif
 
  /* Enable or disable debug output if testing or adding new relocation types */
 #ifdef DEBUG
@@ -169,9 +178,29 @@ void* process_symbol(char* symbolstring) {
         llHandle = LoadLibraryA(locallib);
         DEBUG_PRINT("\t\tHandle: 0x%lx\n", llHandle);
         functionaddress = GetProcAddress(llHandle, localfunc);
+        
+#ifdef ALLOC_TRACKING
+        if (functionaddress != NULL) {
+            if (_stricmp(localfunc, "malloc") == 0)
+                functionaddress = tracked_malloc;
+            else if (_stricmp(localfunc, "free") == 0)
+                functionaddress = tracked_free;
+            else if (_stricmp(localfunc, "calloc") == 0)
+                functionaddress = tracked_calloc;
+            else if (_stricmp(localfunc, "realloc") == 0)
+                functionaddress = tracked_realloc;
+            else if (_stricmp(localfunc, "HeapAlloc") == 0)
+                functionaddress = tracked_heap_alloc;
+            else if (_stricmp(localfunc, "HeapFree") == 0)
+                functionaddress = tracked_heap_free;
+            else if (_stricmp(localfunc, "HeapRealloc") == 0)
+                functionaddress = tracked_heap_realloc;
+        }
+#endif
         DEBUG_PRINT("\t\tProcAddress: 0x%p\n", functionaddress);
 #endif
-    }
+    return functionaddress;
+}
     return functionaddress;
 }
 
@@ -314,7 +343,12 @@ int RunCOFF(char* functionname, unsigned char* coff_data, uint32_t filesize, uns
             memcpy(sectionMapping[counter], coff_data + coff_sect_ptr->PointerToRawData, coff_sect_ptr->SizeOfRawData);
         }
         else{
-            memset(sectionMapping[counter], 0, coff_sect_ptr->SizeOfRawData);
+            if (coff_sect_ptr->SizeOfRawData > 0){
+#ifdef COFF_STANDALONE
+                printf("WARNING: Uninitialized section used (bss?) may be unstable/unreliable\n");
+#endif
+                memset(sectionMapping[counter], 0, coff_sect_ptr->SizeOfRawData);
+            }
         }
 #endif
     }
@@ -637,6 +671,8 @@ int main(int argc, char* argv[]) {
 #endif
     uint32_t filesize = 0;
     int checkcode = 0;
+    int i;
+    
     if (argc < 3) {
         printf("ERROR: %s go /path/to/object/file.o (arguments)\n", argv[0]);
         return 1;
@@ -646,26 +682,46 @@ int main(int argc, char* argv[]) {
     if (coff_data == NULL) {
         return 1;
     }
-    printf("Got contents of COFF file\n");
     arguments = unhexlify((unsigned char*)argv[3], &argumentSize);
-    printf("Running/Parsing the COFF file\n");
-    checkcode = RunCOFF(argv[1], (unsigned char*)coff_data, filesize, arguments, argumentSize);
-    if (checkcode == 0) {
-#ifdef _WIN32
-        printf("Ran/parsed the coff\n");
-        outdata = BeaconGetOutputData(&outdataSize);
-        if (outdata != NULL) {
 
-            printf("Outdata Below:\n\n%s\n", outdata);
+    for (i = 0; i < MAX_LOOP_COUNT; i++) {
+        DEBUG_PRINT("Initializing alloc tracker\n");
+#ifdef ALLOC_TRACKING
+        init_alloc_tracker();
+#endif
+        DEBUG_PRINT("Trying to RunCOFF\n");
+        checkcode = RunCOFF(argv[1], (unsigned char*)coff_data, filesize, arguments, argumentSize);
+        
+        if (checkcode == 0){
+#ifdef _WIN32
+            outdata = BeaconGetOutputData(&outdataSize);
+            if (outdata != NULL){
+                printf("Iteration %d output:\n%s\n", i+1, outdata);
+                free(outdata);
+            }
+#endif
         }
+        else{
+            printf("Iteration %d: Failed to run/parse the COFF file\n", i+1);
+#ifdef ALLOC_TRACKING
+            cleanup_alloc_tracker();
+#endif
+            return 1;
+        }
+
+#ifdef ALLOC_TRACKING
+        if (i == MAX_LOOP_COUNT-1 ){
+            printf("TESTS PASSED RAN %d TIMES\n", i+1);
+            char* summary = get_leak_summary(&checkcode, (size_t*)&filesize);
+            if (summary != NULL) {
+                printf("%s", summary);
+                free(summary);
+            }
+        }
+        cleanup_alloc_tracker();
 #endif
     }
-    else {
-        printf("Failed to run/parse the COFF file\n");
-    }
-    if (coff_data) {
-        free(coff_data);
-    }
+    
     return 0;
 }
 
