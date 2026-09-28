@@ -173,7 +173,7 @@ void BeaconFormatReset(formatp* format) {
 
     memset(format->original, 0, format->size);
     format->buffer = format->original;
-    format->length = format->size;
+    format->length = 0;
     return;
 }
 
